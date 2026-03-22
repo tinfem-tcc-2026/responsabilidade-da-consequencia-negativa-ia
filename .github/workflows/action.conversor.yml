@@ -1,0 +1,47 @@
+name: compile pdf to markdown
+
+on:
+  push:
+    tags:
+      - "*"
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: build docker image
+        run: docker build -t pandoc .
+
+      - name: build pdf
+        run: chmod +x ./_meta/scripts/build.sh && ./_meta/scripts/build.sh
+
+      - name: upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-artifacts
+          path: |
+            ./build/*.pdf
+
+  release:
+    needs: build
+    runs-on: ubuntu-22.04
+
+    permissions:
+      contents: write
+
+    steps:
+    - name: download artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: release-artifacts
+
+    - name: release
+      uses: softprops/action-gh-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        files: |
+          ./*.pdf
